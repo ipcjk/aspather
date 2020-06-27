@@ -1,6 +1,6 @@
 
 aspather is a small tool that reads in a  BGP table output from the Brocade / Extreme command
-show ip bgp routes and calculates to a given target CAM size by filtering out AS  umbers.
+show ip bgp routes and calculates to a given target CAM size by filtering out AS  numbers.
 
 With a list of preferred countries, a weighted list of personal required AS numbers and a default set, it can optimize till the last route. 
 An example run with my preferred list will drop several files in the output list. 
