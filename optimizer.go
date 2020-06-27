@@ -5,7 +5,7 @@ import (
 	"sort"
 )
 
-func optimizeGreedy(camTableSize int) {
+func optimizeGreedy(camTableSize int, debug bool) {
 	var resultSet []bgpAS
 	var negativeResults []bgpAS
 	var resultRoutes = 0
@@ -37,16 +37,19 @@ func optimizeGreedy(camTableSize int) {
 	//for _, elem := range negativeResults {
 	//		fmt.Println("Number", elem.asNumber)
 	//}
-	fmt.Println(resultRoutes, "in", len(resultSet), "zero", zero, "match", matched, "nospace", nospace, "nospaceRoutes", nospaceRoutes)
-
-	fmt.Println("Routes not installed:")
-	fmt.Printf("\t AS not seen in BGP: %d\n", zero)
-	fmt.Printf("\t AS not enough CAM: %d\n", nospace)
-	fmt.Printf("\t Not installed by country:\n\t")
-	for s, i := range countrycounter {
-		fmt.Printf("%s:%d ", s, i)
+	if debug {
+		fmt.Println(resultRoutes, "in", len(resultSet), "zero", zero, "match", matched, "nospace")
+		fmt.Println("Routes not installed:")
+		fmt.Printf("\tAS not seen in BGP: %d\n", zero)
+		fmt.Printf("\tAS not enough target CAM: %d\n", nospace)
+		fmt.Printf("\troutes not enough target CAM: %d\n", nospaceRoutes)
+		fmt.Printf("\tNot installed by country:\n\t")
+		for s, i := range countrycounter {
+			fmt.Printf("%s:%d ", s, i)
+		}
+		fmt.Println("")
 	}
-	fmt.Println("")
+
 	generatePrefixList(returnRanges(negativeResults))
 }
 

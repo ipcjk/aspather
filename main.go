@@ -1,8 +1,14 @@
 package main
 
+// Copyright 2020 Jörg Kost All rights reserved.
+// jk@ip-clear.de
+// Use of this source code is governed by Apache 2.0
+// license that can be found in the LICENSE.MD file.
+
 import (
 	"flag"
 	"log"
+	"os"
 	"sort"
 )
 
@@ -29,9 +35,13 @@ var bgpASlist []bgpAS
 
 /* helper maps */
 var asNumber = make(map[int]string)
-var asNumberRoutes = make(map[int]int)
+var asNumberRoutes map[int]int
 var countries = make(map[string]int)
 var countrycounter = make(map[string]int)
+var personalValue = make(map[int]int)
+var routesSeen uint32
+
+/* some global defaults */
 var fmtAsPathDefault = "ip as-path access-list %s permit %s$\n"
 var fmtASPathName = "savethefib"
 var fmtASPathNameFmt *string
@@ -41,18 +51,29 @@ func main() {
 	aslist := flag.String("aslist", "data_asnums", "as number list")
 	bestRoutes := flag.String("routes", "bestroutes.slx", "router output, e.g. show ipv6 bgp routes best")
 	countryList := flag.String("country", "config_country", "list with country default weight values")
-	asconfig := flag.String("asconfig", "asconfig", "personal as configuration and weights")
+	personalList := flag.String("personal", "", "list with preferred personal as config")
 	camSize := flag.Int("camsize", 512000, "size of the routers cam")
 	sorttype := flag.Int("sorttype", 1, "type of sort, 0=value,then routesnumber bigger, 1=value,then routesnumber smaller")
 	fmtAsPathFmt = flag.String("aspathfmt", fmtAsPathDefault, "default for printing the as-path list")
 	fmtASPathNameFmt = flag.String("aspathname", fmtASPathName, "default name for as-path list")
+	debug := flag.Bool("debug", false, "if memory or other infos is being printed out")
 
 	flag.Parse()
 
+	if *personalList != "" {
+		readPersonalPreference(*personalList)
+	}
 	readCountryList(*countryList)
-	routesSeen := readBestRoutes(*bestRoutes)
+
+	/* open and read routes file*/
+	file, err := os.Open(*bestRoutes)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	routesSeen, asNumberRoutes = readRoutes(file)
+
 	readAsList(*aslist)
-	readPersonalPreference(*asconfig)
 
 	/* sortswitch */
 	if *sorttype == 0 {
@@ -75,12 +96,16 @@ func main() {
 		})
 	}
 
-	log.Printf("Starting optimizer, target cam size %d\n"+
-		"input: %d routes in %d bgp autonomous systems\n",
-		*camSize, routesSeen, len(bgpASlist))
+	if *debug {
+		log.Printf("Starting optimizer, target cam size %d\n"+
+			"input: %d routes in %d bgp autonomous systems\n",
+			*camSize, routesSeen, len(bgpASlist))
+	}
 
-	optimizeGreedy(*camSize)
+	optimizeGreedy(*camSize, *debug)
 
-	PrintMemUsage()
+	if *debug {
+		PrintMemUsage()
+	}
 
 }

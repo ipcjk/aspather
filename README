@@ -1,0 +1,36 @@
+
+aspather is a small tool that reads in a  BGP table output from the Brocade / Extreme command
+show ip bgp routes. Other router support or e.g. bird route server export is going to be added.
+
+Aspather calculates up to a virtual given CAM size. With a list of preferred countries, a weighted list of personal required AS numbers and a default set, it can optimize till the last route. 
+An example run with my preferred list will drop several files in the output list. 
+
+My limit is here around 760.000 prefixes, so we keep a spare for internal routes and new prefixes. 
+
+./aspather -camsize 760000 -routes fullroutes -personal config_personal  -debug
+2020/06/27 10:04:15 Starting optimizer, target cam size 760000
+input: 817765 routes in 98885 bgp autonomous systems
+758305 in 0 zero 30899 match 67972 nospace 14 nospaceRoutes 59324
+Routes not installed:
+	 AS not seen in BGP: 30899
+	 AS not enough CAM: 14
+	 Not installed by country:
+	IL:1 CA:1 AU:1 ES:1 MX:1 CR:1 SA:1 VN:2 US:3 TR:1 ID:1
+ip as-path access-list savethefib permit _11492$
+ip as-path access-list savethefib permit _11830$
+ip as-path access-list savethefib permit _12479$
+ip as-path access-list savethefib permit _22773$
+ip as-path access-list savethefib permit _39891$
+ip as-path access-list savethefib permit _45899$
+ip as-path access-list savethefib permit _6327$
+ip as-path access-list savethefib permit _7155$
+ip as-path access-list savethefib permit _7545$
+ip as-path access-list savethefib permit _7552$
+ip as-path access-list savethefib permit _7713$
+ip as-path access-list savethefib permit _8151$
+ip as-path access-list savethefib permit _8551$
+ip as-path access-list savethefib permit _9121$
+2020/06/27 10:04:15 	Alloc = 152 MiB
+2020/06/27 10:04:15 	TotalAlloc = 558 MiB
+2020/06/27 10:04:15 	Sys = 205 MiB
+2020/06/27 10:04:15 	NumGC = 26

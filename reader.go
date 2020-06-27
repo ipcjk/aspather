@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"io"
 	"log"
 	"os"
 	"regexp"
@@ -11,41 +12,72 @@ import (
 )
 
 func readPersonalPreference(fileName string) {
-
-}
-
-func readBestRoutes(fileName string) (routesSeen uint32) {
-	var seenPrefixBefore = make(map[string]bool)
-	/* Regular expression helper */
-	var aspathReg = regexp.MustCompile(`(\d+)[^\d]*$`)
-	var ip4AddressReg = regexp.MustCompile(`(\d{1,3}.\d{1,3}.\d{1,3}.\d{1,3}\/\d{1,2})`)
-
 	file, err := os.Open(fileName)
 	if err != nil {
 		log.Fatal(err)
+		return
 	}
-
-	var ignoreNextAS_PATH = false
-
+	defer file.Close()
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
-		if ignoreNextAS_PATH {
-			ignoreNextAS_PATH = false
+		as := strings.Fields(scanner.Text())
+		if len(as) != 2 {
+			continue
+		}
+		id, err := strconv.Atoi(as[0])
+		if err != nil {
+			continue
+		}
+		value, err := strconv.Atoi(as[1])
+		if err != nil {
+			continue
+		}
+		personalValue[id] = value
+	}
+
+}
+
+func readRoutes(reader io.Reader) (uint32, map[int]int) {
+	var seenPrefixBefore = make(map[string]bool)
+	var asRoutes = make(map[int]int)
+	var routesSeen uint32
+
+	/* Regular expression helper */
+	var aspathReg = regexp.MustCompile(`(\d+)[^\d]*$`)
+	var ipAddressReg = regexp.MustCompile(`^\d{1,7}\s+([\d\.\/abcdef:]+)|^\d{7}([\d\.\/abcdef:]+)`)
+	var skipNextLine = false
+	var reset = false
+
+	scanner := bufio.NewScanner(reader)
+	for scanner.Scan() {
+
+		if skipNextLine {
+			skipNextLine = false
 			continue
 		}
 
-		ip4 := ip4AddressReg.FindStringSubmatch(scanner.Text())
-		if len(ip4) == 2 {
-			routesSeen++
-			if seenPrefixBefore[ip4[0]] {
-				ignoreNextAS_PATH = true
+		brocadeIPmatcher := ipAddressReg.FindStringSubmatch(scanner.Text())
+
+		if len(brocadeIPmatcher) == 3 {
+			var prefix string
+			if brocadeIPmatcher[2] != "" {
+				prefix = brocadeIPmatcher[2]
+			} else {
+				prefix = brocadeIPmatcher[1]
+			}
+
+			if seenPrefixBefore[prefix] {
+				skipNextLine = true
 				continue
 			}
-			seenPrefixBefore[ip4[0]] = true
+			routesSeen++
+			seenPrefixBefore[prefix] = true
+			reset = false
 			continue
 		}
 
-		if strings.Contains(scanner.Text(), "AS_PATH:") {
+		if strings.Contains(scanner.Text(), "AS_PATH:") && reset == false {
+			reset = true
 			subMatches := aspathReg.FindStringSubmatch(scanner.Text())
 			if len(subMatches) != 2 {
 				continue
@@ -54,11 +86,12 @@ func readBestRoutes(fileName string) (routesSeen uint32) {
 			if err != nil {
 				continue
 			}
-			asNumberRoutes[asn]++
+			asRoutes[asn]++
+			continue
 		}
 
 	}
-	return routesSeen
+	return routesSeen, asRoutes
 }
 
 func readCountryList(fileName string) {
@@ -105,6 +138,10 @@ func readAsList(fileName string) {
 			value += val
 		}
 
+		if _, ok := personalValue[id]; ok {
+			value = personalValue[id]
+		}
+
 		bgpASlist = append(bgpASlist, bgpAS{
 			value:        value,
 			routesNumber: asNumberRoutes[id],
@@ -123,8 +160,8 @@ func bToMb(b uint64) uint64 {
 func PrintMemUsage() {
 	var m runtime.MemStats
 	runtime.ReadMemStats(&m)
-	log.Printf("\tAlloc = %v MiB", bToMb(m.Alloc))
-	log.Printf("\tTotalAlloc = %v MiB", bToMb(m.TotalAlloc))
-	log.Printf("\tSys = %v MiB", bToMb(m.Sys))
-	log.Printf("\tNumGC = %v\n", m.NumGC)
+	log.Printf("Alloc = %v MiB", bToMb(m.Alloc))
+	log.Printf("TotalAlloc = %v MiB", bToMb(m.TotalAlloc))
+	log.Printf("Sys = %v MiB", bToMb(m.Sys))
+	log.Printf("NumGC = %v\n", m.NumGC)
 }
