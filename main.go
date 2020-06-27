@@ -33,7 +33,7 @@ type node struct {
 var matrix [][]node
 var bgpASlist []bgpAS
 
-/* helper maps */
+/* helper maps, poor globals, need refactor  */
 var asNumber = make(map[int]string)
 var asNumberRoutes map[int]int
 var countries = make(map[string]int)
@@ -46,12 +46,15 @@ var fmtAsPathDefault = "ip as-path access-list %s permit %s$\n"
 var fmtASPathName = "savethefib"
 var fmtASPathNameFmt *string
 var fmtAsPathFmt *string
+var defaultValue = 10
+var bgpDefaultValue *int
 
 func main() {
 	aslist := flag.String("aslist", "data_asnums", "as number list")
 	bestRoutes := flag.String("routes", "bestroutes.slx", "router output, e.g. show ipv6 bgp routes best")
 	countryList := flag.String("country", "config_country", "list with country default weight values")
 	personalList := flag.String("personal", "", "list with preferred personal as config")
+	bgpDefaultValue = flag.Int("value", defaultValue, "Default order value for a BGP as")
 	camSize := flag.Int("camsize", 512000, "size of the routers cam")
 	sorttype := flag.Int("sorttype", 1, "type of sort, 0=value,then routesnumber bigger, 1=value,then routesnumber smaller")
 	fmtAsPathFmt = flag.String("aspathfmt", fmtAsPathDefault, "default for printing the as-path list")
@@ -60,20 +63,7 @@ func main() {
 
 	flag.Parse()
 
-	if *personalList != "" {
-		readPersonalPreference(*personalList)
-	}
-	readCountryList(*countryList)
-
-	/* open and read routes file*/
-	file, err := os.Open(*bestRoutes)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-	routesSeen, asNumberRoutes = readRoutes(file)
-
-	readAsList(*aslist)
+	readConfigsToMemory(*personalList, *countryList, *bestRoutes, *aslist)
 
 	/* sortswitch */
 	if *sorttype == 0 {
@@ -108,4 +98,42 @@ func main() {
 		PrintMemUsage()
 	}
 
+}
+
+func readConfigsToMemory(personalList, countryList, bestRoutes, aslist string) {
+	/* read personal file if any */
+	if personalList != "" {
+		file, err := os.Open(personalList)
+		if err != nil {
+			log.Fatal(err)
+		}
+		readPersonalPreference(file)
+		file.Close()
+	}
+
+	/* read country file if any */
+	if countryList != "" {
+		file, err := os.Open(countryList)
+		if err != nil {
+			log.Fatal(err)
+		}
+		readCountryList(file)
+		file.Close()
+	}
+
+	/* read routes file */
+	file, err := os.Open(bestRoutes)
+	if err != nil {
+		log.Fatal(err)
+	}
+	routesSeen, asNumberRoutes = readRoutes(file)
+	file.Close()
+
+	/* read aslist file */
+	file, err = os.Open(aslist)
+	if err != nil {
+		log.Fatal(err)
+	}
+	readAsList(file)
+	file.Close()
 }

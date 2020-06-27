@@ -4,21 +4,14 @@ import (
 	"bufio"
 	"io"
 	"log"
-	"os"
 	"regexp"
 	"runtime"
 	"strconv"
 	"strings"
 )
 
-func readPersonalPreference(fileName string) {
-	file, err := os.Open(fileName)
-	if err != nil {
-		log.Fatal(err)
-		return
-	}
-	defer file.Close()
-	scanner := bufio.NewScanner(file)
+func readPersonalPreference(reader io.Reader) {
+	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		as := strings.Fields(scanner.Text())
 		if len(as) != 2 {
@@ -94,12 +87,8 @@ func readRoutes(reader io.Reader) (uint32, map[int]int) {
 	return routesSeen, asRoutes
 }
 
-func readCountryList(fileName string) {
-	file, err := os.Open(fileName)
-	if err != nil {
-		log.Fatal(err)
-	}
-	scanner := bufio.NewScanner(file)
+func readCountryList(reader io.Reader) {
+	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		c := strings.Fields(scanner.Text())
 		value, err := strconv.Atoi(c[1])
@@ -110,13 +99,8 @@ func readCountryList(fileName string) {
 	}
 }
 
-func readAsList(fileName string) {
-	file, err := os.Open(fileName)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	scanner := bufio.NewScanner(file)
+func readAsList(reader io.Reader) {
+	scanner := bufio.NewScanner(reader)
 	for scanner.Scan() {
 		as := strings.Fields(scanner.Text())
 		/* cut out some things */
@@ -133,7 +117,7 @@ func readAsList(fileName string) {
 
 		var value int
 		if val, ok := countries[country]; !ok {
-			value = 10
+			value = *bgpDefaultValue
 		} else {
 			value += val
 		}
